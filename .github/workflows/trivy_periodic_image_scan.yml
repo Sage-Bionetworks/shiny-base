@@ -9,40 +9,29 @@ name: Trivy Periodic Image Scan
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+#    - cron: "0 0 * * *" daily
+    - cron: "0 * * * *" # hourly
 
 jobs:
   get-image-reference:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Get Version
-        id: semver
-        uses: ietf-tools/semver-action@v1
-        with:
-          token: ${{ github.token }}
-          branch: main
-          skipInvalidTags: true
-          noNewCommitBehavior: current
-          noVersionBumpBehavior: current
-          prefix: "v"
-
-      - name: Ensure image name is lower case
-        id: image_name
-        uses: vishalmamidi/lowercase-action@v1
-        with:
-          string: ghcr.io/${{ github.repository }}:${{steps.semver.outputs.current}}
+      - name: Get image reference
+        id: image_ref
+        run: |
+          repo_name=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
+          basic_creds=$(echo "dummy-user-name:${{ github.token }}" | base64)
+          bearer_token=$(curl -H "Authorization: Basic ${basic_creds}" https://ghcr.io/token?service=ghcr.io&scope=${repo_name}:pull  | jq -r '.token' )
+          last_tag=$(curl -H "Authorization: Bearer ${bearer_token}" "https://ghcr.io/v2/${repo_name}/tags/list?page_size=1000" | jq -r '.tags[-1]' )
     outputs:
-      lowercase: ${{ steps.image_name.outputs.lowercase }}
+      image_reference: ghcr.io/${repo_name}:${last_tag}
 
   periodic-scan:
-    needs: get-image-reference
+    needs: image_ref
     uses: "./.github/workflows/trivy.yml"
     with:
       SOURCE_TYPE: image
-      IMAGE_NAME: ${{ needs.get-image-reference.outputs.lowercase }}
+      IMAGE_NAME: ${{ needs.image_ref.outputs.image_reference }}
 
   # If scan failed, rebuild the image
   update-image:
