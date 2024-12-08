@@ -23,8 +23,10 @@ jobs:
           basic_creds=$(echo "dummy-user-name:${{ github.token }}" | base64)
           bearer_token=$(curl -H "Authorization: Basic ${basic_creds}" https://ghcr.io/token?service=ghcr.io&scope=${repo_name}:pull  | jq -r '.token' )
           last_tag=$(curl -H "Authorization: Bearer ${bearer_token}" "https://ghcr.io/v2/${repo_name}/tags/list?page_size=1000" | jq -r '.tags[-1]' )
+          echo "repo_name=$repo_name" >> $GITHUB_ENV
+          echo "last_tag=$last_tag" >> $GITHUB_ENV
     outputs:
-      image_reference: ghcr.io/${repo_name}:${last_tag}
+      image_reference: ghcr.io/${{ env.repo_name }}:${{ env.last_tag }}
 
   periodic-scan:
     needs: get-image-reference
