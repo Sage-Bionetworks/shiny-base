@@ -27,11 +27,11 @@ jobs:
       image_reference: ghcr.io/${repo_name}:${last_tag}
 
   periodic-scan:
-    needs: image_ref
+    needs: get-image-reference
     uses: "./.github/workflows/trivy.yml"
     with:
       SOURCE_TYPE: image
-      IMAGE_NAME: ${{ needs.image_ref.outputs.image_reference }}
+      IMAGE_NAME: ${{ needs.get-image-reference.outputs.image_reference }}
 
   # If scan failed, rebuild the image
   update-image:
