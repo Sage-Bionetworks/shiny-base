@@ -21,7 +21,9 @@ jobs:
         run: |
           repo_name=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')
           basic_creds=$(echo "dummy-user-name:${{ github.token }}" | base64)
-          bearer_token=$(curl -H "Authorization: Basic ${basic_creds}" https://ghcr.io/token?service=ghcr.io&scope=${repo_name}:pull  | jq -r '.token' )
+          token_response=$(curl -H "Authorization: Basic ${basic_creds}" "https://ghcr.io/token?service=ghcr.io&scope=${repo_name}:pull")
+          echo token_response ${token_response}
+          bearer_token=$(${token_response} | jq -r '.token' )
           echo bearer_token ${bearer_token}
           echo $(curl -H "Authorization: Bearer ${bearer_token}" "https://ghcr.io/v2/${repo_name}/tags/list?page_size=1000")
           last_tag=$(curl -H "Authorization: Bearer ${bearer_token}" "https://ghcr.io/v2/${repo_name}/tags/list?page_size=1000" | jq -r '.tags[-1]')
