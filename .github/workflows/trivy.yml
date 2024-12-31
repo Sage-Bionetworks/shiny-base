@@ -26,12 +26,17 @@ on:
         default: 0
     outputs:
       trivy_conclusion:
-        description: "The pass/fail return code from Trivy"
+        description: "The pass/fail status from Trivy"
         value: ${{ jobs.trivy.outputs.trivy_conclusion }}
+
 env:
   sarif_file_name: trivy-results.sarif
-  # https://github.com/aquasecurity/trivy-action/issues/389#issuecomment-2363829387
+  # downloading the trivy-db from its default GitHub location fails because
+  # the site experiences too many downloads.  The fix is to pull from this
+  # alternate location.
   TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+  TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
+
 jobs:
   trivy:
     name: Trivy
@@ -79,11 +84,15 @@ jobs:
         # after Trivy exits with HIGH/CRITICAL findings
         # See https://github.com/aquasecurity/trivy-action?\
         # tab=readme-ov-file#using-trivy-with-github-code-scanning
+        # Note that here instead of using `always()` which would
+        # allow the step to run if *any* preceeding step failed,
+        # this logic ensures that the step ony runs if all steps
+        # succeed or if only  the 'trivy' step fails.
         if: ${{ success() || steps.trivy.conclusion=='failure' }}
         with:
           sarif_file: ${{ env.sarif_file_name  }}
           wait-for-processing: true
 
     outputs:
-      trivy_conclusion: steps.trivy.conclusion
+      trivy_conclusion: ${{ steps.trivy.conclusion }}
 ...
